@@ -1,0 +1,56 @@
+.sidebar {
+  overflow: scroll;
+
+  /* Hide scrollbar */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.navlink {
+  border-radius: 8px;
+  min-height: 40px;
+  padding-block: 5px;
+
+  &:hover {
+    background-color: light-dark(
+      var(--mantine-color-gray-2),
+      var(--mantine-color-dark-5)
+    );
+  }
+}
+
+.navlink_toggle {
+  margin-bottom: var(--mantine-spacing-sm);
+
+  @media (max-width: $mantine-breakpoint-xs) {
+    display: none;
+  }
+}
+
+.navlink_active {
+  background-color: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-6)
+  );
+
+  span {
+    font-weight: 600;
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+  }
+
+  &:hover {
+    background-color: light-dark(
+      var(--mantine-color-gray-3),
+      var(--mantine-color-dark-6)
+    );
+  }
+}
+
+.navlink_collapsed {
+  @media (max-width: $mantine-breakpoint-xs) {
+    display: none;
+  }
+}

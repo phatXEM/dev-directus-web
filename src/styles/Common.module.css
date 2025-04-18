@@ -1,0 +1,21 @@
+.button_black {
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+  background-color: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+
+  &:hover {
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+    background-color: light-dark(
+      var(--mantine-color-gray-4),
+      var(--mantine-color-dark-3)
+    );
+  }
+}
+
+.grid_item_smallscreen {
+  border-right: 1px solid
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  min-height: calc(100% + 16px);
+}

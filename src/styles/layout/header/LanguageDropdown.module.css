@@ -1,0 +1,14 @@
+.language_button {
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+
+  &:hover {
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+  }
+}
+
+.language_item_active {
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-5)
+  );
+}

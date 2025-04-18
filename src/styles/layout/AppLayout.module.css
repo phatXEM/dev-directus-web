@@ -1,0 +1,24 @@
+.app_bg {
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-black)
+  );
+}
+
+.content_wrapper {
+  height: calc(100vh - 56px);
+  overflow: auto;
+  margin: 0;
+  margin-right: var(--mantine-spacing-xs);
+  padding-top: var(--mantine-spacing-sm);
+  padding-inline: 0;
+  background-color: light-dark(var(--mantine-color-white), #202123);
+  border-radius: 10px;
+  border: solid 1px
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.content_wrapper_home {
+  height: calc(100vh - 100px);
+  margin-inline: var(--mantine-spacing-sm);
+}

@@ -1,0 +1,4 @@
+.activeTheme {
+  border-color: var(--mantine-color-blue-7);
+  border-width: 2px;
+}

@@ -1,11 +1,20 @@
 "use client";
 
-import { Container, Text } from "@mantine/core";
+import { Container, Text, Title } from "@mantine/core";
+import { useSession } from "next-auth/react";
 
 const Home = () => {
+  const { data: session } = useSession();
   return (
     <Container fluid mx={0}>
-      <Text>Home</Text>
+      <Title size="md">
+        <Text inherit span fw={400}>
+          Hello{" "}
+        </Text>
+        {session?.user?.first_name
+          ? session?.user?.first_name + " " + session?.user?.last_name
+          : session?.user?.full_name || session?.user?.email || ""}
+      </Title>
     </Container>
   );
 };

@@ -310,5 +310,6 @@
   "pick_birthday": "Pick birthday",
   "pending": "Pending",
   "rejected": "Rejected",
-  "date_created": "Date created"
+  "date_created": "Date created",
+  "or": "or"
 }

@@ -66,7 +66,7 @@ const UserDropdown = ({ session, logOut, balance }: UserDropdownProps) => {
           closeMenuOnClick={false}
         >
           <Text size="sm">{session?.user.username}</Text>
-          <Text size="xs" c="gray">
+          <Text size="xs" c="gray" style={{ overflowWrap: "anywhere" }}>
             {session?.user.email}
           </Text>
         </Menu.Item>

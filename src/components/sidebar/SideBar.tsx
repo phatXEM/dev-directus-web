@@ -3,12 +3,10 @@
 import { memo } from "react";
 import { useTranslations } from "next-intl";
 import { NavLink, Stack, Text, Title, Tooltip } from "@mantine/core";
-import { Link, redirect } from "@/i18n/routing";
-import { useParams, usePathname } from "next/navigation";
+import { Link } from "@/i18n/routing";
 import { IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react";
 import classes from "@/styles/layout/SideBar.module.css";
 import clsx from "clsx";
-import { Locale } from "@/i18n/types";
 
 type SideBarProps = {
   isCollapsed: boolean;
@@ -18,8 +16,6 @@ type SideBarProps = {
 
 const SideBar = ({ isCollapsed, toggleCollapsed, isMobile }: SideBarProps) => {
   const t = useTranslations();
-  const pathname = usePathname();
-  const { locale } = useParams();
 
   return (
     <Stack

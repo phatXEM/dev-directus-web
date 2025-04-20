@@ -25,6 +25,8 @@ import {
   IconChevronLeft,
   IconCode,
   IconBrandApple,
+  IconBrandGoogle,
+  IconBrandFacebook,
 } from "@tabler/icons-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,11 +34,17 @@ import { Controller, useForm, type SubmitHandler } from "react-hook-form";
 import { signIn } from "next-auth/react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useGoogleLogin } from "@react-oauth/google";
+import FacebookLogin from "@greatsumini/react-facebook-login";
 import LanguageDropdown from "@/components/header/LanguageDropdown";
 import { Link } from "@/i18n/routing";
 import Logo from "@/components/shared/Logo";
 import Modal, { ModalHandles } from "@/components/shared/Modal";
 import { useScript } from "@/hooks/useScript";
+import { isAppleSignInSupported, signInWithApple } from "@/services/appleAuth";
+import { signInWithGoogle } from "@/services/googleAuth";
+import { signInWithFacebook } from "@/services/facebookAuth";
+import { useSetState } from "@mantine/hooks";
 
 type FormData = z.infer<typeof schema>;
 
@@ -50,6 +58,12 @@ const Login = () => {
   const [showOTPInput, setShowOTPInput] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useSetState({
+    isAppleSupported: false,
+    apple: false,
+    google: false,
+    facebook: false,
+  });
   const router = useRouter();
   const { locale } = useParams();
   const searchParams = useSearchParams();
@@ -57,10 +71,18 @@ const Login = () => {
   const modalRef = useRef<ModalHandles>(null);
   const theme = useMantineTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAppleLoading, setIsAppleLoading] = useState(false);
   useScript(
     "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"
   );
+  const googleLogin = useGoogleLogin({
+    onSuccess: (credentialResponse) => {
+      onGoogleLogin(credentialResponse);
+    },
+  });
+
+  useEffect(() => {
+    setLoading({ isAppleSupported: isAppleSignInSupported() });
+  }, [setLoading]);
 
   const {
     control,
@@ -141,92 +163,103 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleAppleSignIn = async (response: any) => {
-    console.log("Apple Sign In response:", response);
+  const onAppleLogin = async () => {
+    return; // TODO: Fix this
+    try {
+      setLoading({ apple: true });
+      const response = await signInWithApple();
 
-    // If we close the popup without completing sign up, response may have an error
-    if (response?.error) {
-      console.error("Apple sign-in error:", response.error);
+      console.log("Apple sign-in response:", response);
+    } catch (error: any) {
+      console.error(
+        "Apple sign-in error:",
+        typeof error === "string" ? error : JSON.stringify(error)
+      );
       setErrorMessage(
         t("apple_login_error") || "Apple sign-in failed. Please try again."
       );
       modalRef.current?.open();
-      return;
+    } finally {
+      setLoading({ apple: false });
     }
+  };
 
-    // Check for authorization code
-    if (!response || !response.authorization || !response.authorization.code) {
-      console.error("Invalid Apple sign-in response:", response);
-      setErrorMessage(
-        t("apple_login_error") || "Invalid Apple sign-in response"
-      );
-      modalRef.current?.open();
-      return;
-    }
-
-    setIsAppleLoading(true);
+  const onGoogleLogin = async (credentialResponse: any) => {
     try {
-      // Call backend endpoint with the authorization code
-      const directUrl = process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI || "";
-      const res: Response = await fetch(directUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code: response.authorization.code,
-          state: response.authorization.state,
-        }),
-        credentials: "include", // Include cookies if your backend uses session cookies
+      setLoading({ google: true });
+
+      // Process the Google sign-in response
+      const authResult = await signInWithGoogle(credentialResponse);
+
+      const loginAPI = await signIn("credentials", {
+        access_token: authResult.access_token,
+        refresh_token: authResult.refresh_token,
+        expires: authResult.expires,
+        redirect: false,
       });
 
-      if (!res.ok) {
-        const errorData = await res.text();
-        throw new Error(`Failed to authenticate with Apple: ${errorData}`);
-      }
-
-      const data = await res.json();
-      console.log("Apple login successful:", data);
-
-      // If your backend returns a JWT token or other auth data
-      if (data.token || data.user) {
-        // Handle successful login (redirect or update UI)
+      if (loginAPI && loginAPI.ok) {
         const redirect = searchParams?.get("redirect");
         router.push(`/${locale}/${redirect || "home"}`);
         router.refresh();
       } else {
-        throw new Error("Invalid response from authentication server");
+        if (loginAPI?.error) {
+          setErrorMessage(
+            typeof loginAPI.error === "string"
+              ? loginAPI.error
+              : JSON.stringify(loginAPI.error)
+          );
+          modalRef.current?.open();
+        }
       }
-    } catch (err: any) {
-      console.error("Apple sign-in error:", err);
-      setErrorMessage(`Apple sign-in failed: ${err.message}`);
+
+      // If authentication is successful, redirect to the home page or the requested redirect URL
+      const redirect = searchParams?.get("redirect");
+      router.push(`/${locale}/${redirect || "home"}`);
+      router.refresh();
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      setErrorMessage("Google sign-in failed. Please try again.");
       modalRef.current?.open();
     } finally {
-      setIsAppleLoading(false);
+      setLoading({ google: false });
     }
   };
 
-  const appleSignin = async () => {
-    waitForVar("AppleID").then(() => {
-      window.AppleID.auth.init({
-        clientId: process.env.NEXT_PUBLIC_APPLE_CLIENT_ID || "",
-        redirectURI: process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI || "",
-        scope: "email name",
-        usePopup: true,
+  const onFacebookLogin = async (facebookResponse: any) => {
+    try {
+      setLoading({ facebook: true });
+
+      // Process the Facebook sign-in response
+      const authResult = await signInWithFacebook(facebookResponse);
+
+      const loginAPI = await signIn("credentials", {
+        access_token: authResult.access_token,
+        refresh_token: authResult.refresh_token,
+        expires: authResult.expires,
+        redirect: false,
       });
 
-      return window.AppleID.auth
-        .signIn()
-        .then((response: any) => {
-          console.error("Apple Sign In response:", response);
-        })
-        .catch((error: any) => {
-          console.error(
-            "Apple sign-in error:",
-            typeof error === "string" ? error : JSON.stringify(error)
-          );
-        });
-    });
+      if (loginAPI && loginAPI.ok) {
+        const redirect = searchParams?.get("redirect");
+        router.push(`/${locale}/${redirect || "home"}`);
+        router.refresh();
+      }
+      if (loginAPI && loginAPI.error) {
+        setErrorMessage(
+          typeof loginAPI.error === "string"
+            ? loginAPI.error
+            : JSON.stringify(loginAPI.error)
+        );
+        modalRef.current?.open();
+      }
+    } catch (error: any) {
+      console.error("Facebook sign-in error:", error);
+      setErrorMessage("Facebook sign-in failed. Please try again.");
+      modalRef.current?.open();
+    } finally {
+      setLoading({ facebook: false });
+    }
   };
 
   return (
@@ -352,16 +385,52 @@ const Login = () => {
 
             {!showOTPInput && (
               <>
-                <Divider my="xs" label={"or"} labelPosition="center" />
+                <Divider my="xs" label={t("or")} labelPosition="center" />
 
-                <Button
-                  leftSection={<IconBrandApple size={18} />}
-                  variant="default"
-                  w="100%"
-                  onClick={appleSignin}
-                >
-                  {"Sign in with Apple"}
-                </Button>
+                <Stack gap="xs">
+                  {loading.isAppleSupported && (
+                    <Button
+                      leftSection={<IconBrandApple size={18} />}
+                      variant="default"
+                      w="100%"
+                      onClick={onAppleLogin}
+                      loading={loading.apple}
+                    >
+                      {"Sign in with Apple"}
+                    </Button>
+                  )}
+                  <Button
+                    leftSection={<IconBrandGoogle size={18} />}
+                    variant="default"
+                    w="100%"
+                    loading={loading.google}
+                    onClick={() => googleLogin()}
+                  >
+                    {"Sign in with Google"}
+                  </Button>
+                  <FacebookLogin
+                    appId={process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || ""}
+                    onSuccess={onFacebookLogin}
+                    onFail={(error) => {
+                      console.error("Facebook sign-in error:", error);
+                      setErrorMessage(
+                        "Facebook sign-in failed. Please try again."
+                      );
+                      modalRef.current?.open();
+                    }}
+                    render={({ onClick, logout }) => (
+                      <Button
+                        leftSection={<IconBrandFacebook size={18} />}
+                        variant="default"
+                        w="100%"
+                        loading={loading.facebook}
+                        onClick={onClick}
+                      >
+                        {"Sign in with Facebook"}
+                      </Button>
+                    )}
+                  />
+                </Stack>
               </>
             )}
 
@@ -423,32 +492,3 @@ const Login = () => {
 };
 
 export default Login;
-
-const waitForVar = (
-  name,
-  {
-    pollFrequency = 1000,
-    retries: inRetries = 100,
-    parent = window,
-  }: {
-    pollFrequency?: number | (({ retries: number }) => number);
-    retries?: number;
-    parent?: object;
-  } = { pollFrequency: 1000, retries: 100, parent: window }
-) => {
-  if (parent && parent.hasOwnProperty(name)) {
-    return Promise.resolve(parent[name]);
-  }
-  if (!inRetries) {
-    return Promise.resolve(undefined);
-  }
-  const retries = inRetries - 1;
-  return new Promise((resolve) =>
-    setTimeout(
-      resolve,
-      typeof pollFrequency === "function"
-        ? pollFrequency({ retries })
-        : pollFrequency
-    )
-  ).then(() => waitForVar(name, { pollFrequency, parent, retries }));
-};

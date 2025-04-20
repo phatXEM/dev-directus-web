@@ -31,56 +31,77 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           gender?: string;
           phone?: string;
           country_code?: string;
+          access_token?: string;
+          refresh_token?: string;
+          expires?: number;
         };
 
         try {
-          if (params?.fromRegister) {
-            const registerAPI = await directus.request(
-              registerUser(email, password)
+          if (email && password) {
+            if (params?.fromRegister) {
+              const registerAPI = await directus.request(
+                registerUser(email, password)
+              );
+            }
+
+            // Login API
+            const loginAPI = await directus.request(
+              login(email, password, { mode: "json", ...(otp && { otp }) })
             );
-          }
 
-          // Login API
-          const loginAPI = await directus.request(
-            login(email, password, { mode: "json", ...(otp && { otp }) })
-          );
+            if (loginAPI && loginAPI.access_token) {
+              // Set token to cookie
+              setTokens({
+                access_token: loginAPI.access_token,
+                refresh_token: loginAPI.refresh_token || "",
+                expires: Date.now() + (loginAPI.expires || 0) - 60000,
+              });
 
-          if (loginAPI && loginAPI.access_token) {
+              // Get user profile
+              const getProfileAPI = await directus.request(
+                withToken(loginAPI.access_token, readMe())
+              );
+
+              if (params?.fromRegister) {
+                const updateProfileAPI = await directus.request(
+                  withToken(
+                    loginAPI.access_token,
+                    updateMe({
+                      full_name: params?.full_name ?? "",
+                      gender: params?.gender ?? "",
+                      phone: params?.phone ?? "",
+                      country_code: params?.country_code ?? "",
+                      ...(!getProfileAPI?.referrer_id && {
+                        referrer_id: process.env.SOC_DEV_ID,
+                      }),
+                    })
+                  )
+                );
+
+                return { ...loginAPI, ...updateProfileAPI };
+              }
+
+              return { ...loginAPI, ...getProfileAPI };
+            } else {
+              return null;
+            }
+          } else if (params?.access_token && params?.refresh_token) {
             // Set token to cookie
             setTokens({
-              access_token: loginAPI.access_token,
-              refresh_token: loginAPI.refresh_token || "",
-              expires: Date.now() + (loginAPI.expires || 0) - 60000,
+              access_token: params?.access_token,
+              refresh_token: params?.refresh_token,
+              expires: Date.now() + (params?.expires || 0) - 60000,
             });
 
             // Get user profile
             const getProfileAPI = await directus.request(
-              withToken(loginAPI.access_token, readMe())
+              withToken(params?.access_token, readMe())
             );
 
-            if (params?.fromRegister) {
-              const updateProfileAPI = await directus.request(
-                withToken(
-                  loginAPI.access_token,
-                  updateMe({
-                    full_name: params?.full_name ?? "",
-                    gender: params?.gender ?? "",
-                    phone: params?.phone ?? "",
-                    country_code: params?.country_code ?? "",
-                    ...(!getProfileAPI?.referrer_id && {
-                      referrer_id: process.env.SOC_DEV_ID,
-                    }),
-                  })
-                )
-              );
-
-              return { ...loginAPI, ...updateProfileAPI };
-            }
-
-            return { ...loginAPI, ...getProfileAPI };
-          } else {
-            return null;
+            return { ...params, ...getProfileAPI };
           }
+
+          return null;
         } catch (err: any) {
           if (process.env.NODE_ENV === "development") {
             console.log("---- ERROR credentials", err);

@@ -311,5 +311,7 @@
   "pending": "Đang chờ",
   "rejected": "Bị từ chối",
   "date_created": "Ngày tạo",
-  "or": "hoặc"
+  "or": "hoặc",
+  "video": "Video",
+  "video_desc": "Xem video"
 }

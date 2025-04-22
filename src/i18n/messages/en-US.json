@@ -311,5 +311,7 @@
   "pending": "Pending",
   "rejected": "Rejected",
   "date_created": "Date created",
-  "or": "or"
+  "or": "or",
+  "video": "Video",
+  "video_desc": "View video content"
 }

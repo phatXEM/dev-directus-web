@@ -191,8 +191,6 @@ const Login = () => {
     try {
       setLoading({ google: true });
 
-      console.log("Google sign-in response:", credentialResponse);
-
       // Process the Google sign-in response
       const authResult = await signInWithGoogle(credentialResponse);
 
@@ -494,7 +492,7 @@ const Login = () => {
                       </Button>
                     )}
                   />
-                  <Button
+                  {/* <Button
                     leftSection={<IconBrandStrava size={18} />}
                     variant="default"
                     w="100%"
@@ -502,7 +500,7 @@ const Login = () => {
                     onClick={onStravaLogin}
                   >
                     {"Sign in with Strava"}
-                  </Button>
+                  </Button> */}
                 </Stack>
               </>
             )}

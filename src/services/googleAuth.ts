@@ -22,8 +22,6 @@ export const signInWithGoogle = async (
     throw new Error("Invalid Google sign-in response");
   }
 
-  // console.log("Google sign-in response:", response);
-
   try {
     // Call backend endpoint
     const res = await fetch("/api/quick-auth/google", {

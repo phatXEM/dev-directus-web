@@ -27,6 +27,7 @@ import {
   IconBrandApple,
   IconBrandGoogle,
   IconBrandFacebook,
+  IconBrandStrava,
 } from "@tabler/icons-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +46,7 @@ import { isAppleSignInSupported, signInWithApple } from "@/services/appleAuth";
 import { signInWithGoogle } from "@/services/googleAuth";
 import { signInWithFacebook } from "@/services/facebookAuth";
 import { useSetState } from "@mantine/hooks";
+import { exchangeStravaCodeForToken } from "@/services/stravaAuth";
 
 type FormData = z.infer<typeof schema>;
 
@@ -63,6 +65,7 @@ const Login = () => {
     apple: false,
     google: false,
     facebook: false,
+    strava: false,
   });
   const router = useRouter();
   const { locale } = useParams();
@@ -188,6 +191,8 @@ const Login = () => {
     try {
       setLoading({ google: true });
 
+      console.log("Google sign-in response:", credentialResponse);
+
       // Process the Google sign-in response
       const authResult = await signInWithGoogle(credentialResponse);
 
@@ -261,6 +266,65 @@ const Login = () => {
       setLoading({ facebook: false });
     }
   };
+
+  const onStravaLogin = async () => {
+    return;
+    try {
+      setLoading({ strava: true });
+
+      // Generate a random state for CSRF protection
+      const state = Math.random().toString(36).substring(2, 15);
+
+      // Build the authorization URL with required parameters
+      const redirectUri = `${window.location.origin}${window.location.pathname}`;
+      const authUrl = `https://www.strava.com/oauth/authorize?client_id=${
+        process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID
+      }&response_type=code&state=${state}&scope=read_all,activity:read,profile:read_all&approval_prompt=force&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}`;
+
+      // Open in the same window - simpler approach
+      window.location.href = authUrl;
+
+      // We don't need to set loading to false here as we're redirecting away
+    } catch (error: any) {
+      console.error("Strava sign-in error:", error);
+      setErrorMessage("Strava sign-in failed. Please try again.");
+      modalRef.current?.open();
+      setLoading({ strava: false });
+    }
+  };
+
+  // Check for Strava auth code on component mount
+  useEffect(() => {
+    const processStravaAuth = async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state");
+
+      if (code) {
+        console.log("Received Strava code:", code);
+        // Here you can add code to handle the authorization code
+        // For example, display it or store it temporarily
+        const stravaAuthRes = await exchangeStravaCodeForToken(code);
+        console.log("Strava auth response:", stravaAuthRes);
+
+        // Remove code from URL to prevent issues on refresh
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("code");
+        cleanUrl.searchParams.delete("state");
+        window.history.replaceState({}, document.title, cleanUrl.toString());
+      }
+    };
+
+    processStravaAuth();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem("strava_auth_state");
+    };
+  }, []);
 
   return (
     <Container fluid>
@@ -430,6 +494,15 @@ const Login = () => {
                       </Button>
                     )}
                   />
+                  <Button
+                    leftSection={<IconBrandStrava size={18} />}
+                    variant="default"
+                    w="100%"
+                    loading={loading.strava}
+                    onClick={onStravaLogin}
+                  >
+                    {"Sign in with Strava"}
+                  </Button>
                 </Stack>
               </>
             )}
